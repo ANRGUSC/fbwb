@@ -1,0 +1,83 @@
+WATCHING THE FLYBRAIN DEMO
+
+Double-click Run Explained Demo.cmd. Webots appears on the left and the
+measurement panel on the right. Eighteen simulated seconds take several minutes
+on this CPU: each camera frame waits for its full neural computation.
+
+0-6 s: TAKEOFF. The ordinary altitude PID raises the drone to one metre.
+This movement is not a neural decision.
+
+6.0-6.4 s: STILL BASELINE. The simulator holds the pose. Static patterns
+should produce zero visual drive and no spikes in the reset network.
+The altitude controller and rotors remain running throughout the fixture.
+
+6.4-6.8 s: LEFT SCREEN. The blue screen moves; the left-image feature rises.
+Watch the receptor target rates, individual measured spike rates, then
+motion-pool and descending-neuron activity. Neural commands are shown but
+forward/yaw commands are withheld while the pose is held.
+
+6.8-7.2 s: RIGHT SCREEN. The orange screen moves instead. Brain state and
+camera history are reset at each held trial, with the same random seed,
+so prior trial activity does not contaminate the comparison.
+
+7.2-7.6 s: OUTWARD MOTION. Both patterns move away from the image centre.
+Watch the radial feature and the forward decoder. These are visual probes,
+not obstacles that the controller understands semantically.
+
+7.6-8.0 s: VERTICAL MOTION. Patterns move vertically. Inspect the vertical
+feature and R7/R8 proxy drive. Climb output is displayed but not connected
+to flight; altitude still belongs to the PID.
+
+8-10 s: LEFT TURN. A yaw-only rig holds position while neural yaw drives the
+rotors. A stabilized test camera sees the left moving pattern. Watch the
+positive applied yaw and the positive measured heading. The yaw is decoded
+from measured neural activity; no scripted turn command is inserted.
+
+10-12 s: RIGHT TURN. Pose and brain reset; now the right pattern moves. Watch
+negative applied yaw and negative measured heading. Raw anatomical left/right
+rates are divided by reference rates measured under symmetric stimulation,
+so neither pool wins merely because its baseline gain is larger.
+
+12-18 s: FREE FLIGHT. The rig releases from a centred pose and the brain resets.
+The onboard camera replaces the stabilized test camera. The left pattern moves;
+neural forward/yaw outputs reach the flight controller. Subsequent turns are
+determined by camera feedback and network activity, not a scheduled direction.
+Compare targets with measured motion: filtering, inertia and altitude recovery
+cause lag. Persistent activity can continue after visual features change.
+
+READING THE PANEL
+
+Each receptor square is a real sampled receptor neuron, not an anatomical
+ommatidium. Hover for its FlyWire ID, observed Hz, requested drive Hz and
+input-event count. All rates/counts use a 20 ms simulated window. Colour
+brightness saturates at 300 Hz; numerical readouts retain the actual rate.
+Drive events and actual spikes differ because the network also influences
+the cells. Population means use all cells in their labelled group.
+
+The source adapter supplies only four image-wide optical-flow features.
+Corrected mode now uses anatomical side labels for R1-6 and motion neurons.
+These are soma-side labels, not a complete ommatidial visual-field map.
+Ratios cross-activate: horizontal motion can activate the vertical ratio,
+and vertical patterns can yield horizontal flow. Read the measured bars;
+do not assume each screen stimulates only one biological pathway.
+
+Forward is nonnegative in this decoder: it cannot command reverse. Turn
+uses the gain-balanced mean rates of anatomical motion-cell pools. Webots positive
+yaw turns left, so the adapter reverses the source's Tello yaw convention.
+Sideways is disabled. Neural climb is shown but unused. Motor commands
+are signed rotor speeds, not separate neural motor-neuron outputs.
+
+The printed narrative explains these measured decoder and controller
+relationships; it is not a neuron-by-neuron causal proof. This model's
+physiology is experimental, including very negative membrane voltages.
+
+AFTER THE RUN
+
+The finite simulation closes Webots. The panel stays open. Click Replay
+to play the recording, then use the slider to inspect a particular frame.
+The phase dropdown jumps straight to LEFT TURN, RIGHT TURN or FREE FLIGHT.
+If necessary click Load phases first; it loads the available recording.
+Pause view freezes only the panel. Stop run requests an orderly simulator
+stop after its current computation. Replay Explained Demo.cmd reopens
+the last recording. Printed explanations are also saved in
+results/explained-bilateral/narrative.txt, alongside live.ndjson and telemetry.csv.

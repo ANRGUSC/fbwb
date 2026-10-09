@@ -1,0 +1,68 @@
+FLYBRAIN TO WEBOTS: WHAT CHANGED AND WHY
+
+The original evolutionary-behavior source is retained unchanged in
+vendor/flybrain (commit 97e02fb7c8d19fd5267c3fa9194f8001e08fb613).
+The changes below are in our adapter and the separate "corrected" model.
+
+1. Simulator interface. Replaced the live Tello camera/command interface with
+Webots camera frames and a Crazyflie velocity/altitude PID. Converted forward
+commands to m/s and reversed the yaw sign for Webots' coordinate convention.
+This connects the brain's abstract commands to a simulated physical drone.
+
+2. Neural timing and units. The original dynamics were numerically unstable.
+Added exponential membrane/synapse integration, explicit voltage-scale synaptic
+increments and signed synapse-count weights, plus delayed events and refractory
+handling. Each 20 ms physics step now receives exactly twenty 1 ms neural steps;
+simulation waits for inference. This avoids numerical blow-up and clock drift.
+Stabilizing the original integrator alone left the model effectively silent;
+the unit/gain changes are therefore a separate model revision, not just a
+faster or smaller timestep.
+The older original and stability-only modes remain available for comparison.
+
+3. Sensory encoding. Adapted image conversion and optical flow to Webots; added
+a small motion noise floor so stationary frames do not become maximum input
+after normalization. Optical-flow features drive seeded Poisson activation of
+receptor cells. This supplies explicit input rates and reproducible trials.
+
+4. Bidirectional turning. Replaced arbitrary halves of the neuron list with
+FlyWire anatomical side annotations, joined by exact neuron ID. Left/right
+image features now drive the corresponding R1-6 groups. Turning compares mean
+motion-cell firing rates, with side gains measured using symmetric stimulation.
+This removes pool-size and response-gain biases. Left/right stimuli validate
+the decoder but are not used to fit the gains. Yaw comes from actual network
+spikes, not a scripted turn or a direct camera-to-motor bypass.
+
+5. Flight stability. Added command smoothing, slew limits and a controlled
+takeoff. Preserved PID state and running rotors during held trials so release
+does not cause a fall. Altitude remains under PID control; neural climb is
+shown but not applied. Sideways is disabled; the forward decoder cannot reverse.
+
+6. Explainability. Added measured receptor/network/output telemetry, a live
+panel, synchronized replay and printed narration. Structured visual probes
+precede actual neural left/right turns on a yaw-only rig, then free flight
+using the onboard camera. The turn rig uses a stabilized test camera to
+separate stimulus effects from motion of the drone's own camera.
+
+Data: reconstructed the graph from official public v783 exports because the
+author's private processed CSVs were unavailable. Sparse computation keeps
+all 139,255 neurons in use on this CPU; there is no neuron subsampling.
+
+Scope: anatomical side means soma side, not an ommatidial visual-field
+map. The gain-balanced turn readout is an engineering interface, not a claim
+to reproduce a biological steering circuit. Physiological validity remains
+limited, including GABA-only inhibition, very negative voltages and persistent
+recurrent activity.
+Successful flight establishes integration behavior, not biological validation.
+
+Measured validation: 19 tests pass. The neural turn trials rotate the drone
+48.6 degrees left and 47.1 degrees right. It then completes six seconds of
+onboard-camera free flight, travelling 0.294 m with no airborne collisions;
+final altitude is 0.995 m. The left/right trials use a yaw rig; the final
+segment releases the fixture and enables neural forward motion as well.
+
+Sources and reproducibility:
+- Original: https://github.com/dylankainth/flybrain/tree/evolutionary-behavior
+- Dynamics reference: https://github.com/philshiu/Drosophila_brain_model
+- Annotation definitions: https://codex.flywire.ai/faq
+- Local README.md, data/prepared/turn_calibration.json, and recorded acceptance
+  results document exact parameters, calibration, tests and measured behavior.

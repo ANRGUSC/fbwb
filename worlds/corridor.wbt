@@ -1,0 +1,96 @@
+#VRML_SIM R2025a utf8
+EXTERNPROTO "../protos/Crazyflie.proto"
+WorldInfo {
+  basicTimeStep 20
+  coordinateSystem "ENU"
+  title "Flybrain: doorway and offset obstacle"
+}
+Viewpoint {
+  position -2.7 -1.25 2.5
+  orientation 0 0 1 0
+  follow "Crazyflie"
+  followType "Pan and Tilt Shot"
+}
+Background { skyColor [ 0.75 0.84 0.93 ] }
+DirectionalLight { direction -1 -1 -2 intensity 1 }
+Solid {
+  translation 0 0 -0.05
+  name "tiled floor"
+  children [ Shape {
+    appearance PBRAppearance {
+      baseColorMap ImageTexture { url [ "textures/floor.png" ] }
+      textureTransform TextureTransform { scale 8 3 }
+      roughness 1
+      metalness 0
+    }
+    geometry Box { size 8 3 0.1 }
+  } ]
+  boundingObject Box { size 8 3 0.1 }
+}
+Solid {
+  translation 0 1.55 1.1
+  name "left wall"
+  children [ Shape { appearance DEF WALL PBRAppearance { baseColor 0.86 0.88 0.87 roughness 1 metalness 0 } geometry Box { size 8 0.1 2.2 } } ]
+  boundingObject Box { size 8 0.1 2.2 }
+}
+Solid {
+  translation 0 -1.55 1.1
+  name "right wall"
+  children [ Shape { appearance USE WALL geometry Box { size 8 0.1 2.2 } } ]
+  boundingObject Box { size 8 0.1 2.2 }
+}
+Solid {
+  translation 4 0 1.1
+  name "end wall"
+  children [ Shape { appearance USE WALL geometry Box { size 0.1 3 2.2 } } ]
+  boundingObject Box { size 0.1 3 2.2 }
+}
+Solid {
+  translation -4 0 1.1
+  name "start wall"
+  children [ Shape { appearance USE WALL geometry Box { size 0.1 3 2.2 } } ]
+  boundingObject Box { size 0.1 3 2.2 }
+}
+# Broad wall panels provide optic flow without pixel noise.
+Pose { translation -1 1.49 1.1 children [ Shape { appearance DEF BLUE PBRAppearance { baseColor 0.10 0.35 0.56 roughness 1 metalness 0 } geometry Box { size 0.45 0.02 1.8 } } ] }
+Pose { translation 0.5 1.49 1.1 children [ Shape { appearance USE BLUE geometry Box { size 0.45 0.02 1.8 } } ] }
+Pose { translation 2 1.49 1.1 children [ Shape { appearance USE BLUE geometry Box { size 0.45 0.02 1.8 } } ] }
+Pose { translation -1 -1.49 1.1 children [ Shape { appearance USE BLUE geometry Box { size 0.45 0.02 1.8 } } ] }
+Pose { translation 0.5 -1.49 1.1 children [ Shape { appearance USE BLUE geometry Box { size 0.45 0.02 1.8 } } ] }
+Pose { translation 2 -1.49 1.1 children [ Shape { appearance USE BLUE geometry Box { size 0.45 0.02 1.8 } } ] }
+# A large offset obstacle changes left/right visual motion and occludes the doorway.
+DEF OBSTACLE Solid {
+  translation 0.95 -0.55 0.65
+  name "orange obstacle"
+  children [ Shape { appearance PBRAppearance { baseColor 0.86 0.31 0.10 roughness 1 metalness 0 } geometry Box { size 0.45 0.55 1.3 } } ]
+  boundingObject Box { size 0.45 0.55 1.3 }
+}
+# Doorway leaves a 1.4m-wide passage centered on the corridor.
+Solid {
+  translation 2.2 1.1 1.1
+  name "doorway left pier"
+  children [ Shape { appearance USE BLUE geometry Box { size 0.16 0.8 2.2 } } ]
+  boundingObject Box { size 0.16 0.8 2.2 }
+}
+Solid {
+  translation 2.2 -1.1 1.1
+  name "doorway right pier"
+  children [ Shape { appearance USE BLUE geometry Box { size 0.16 0.8 2.2 } } ]
+  boundingObject Box { size 0.16 0.8 2.2 }
+}
+Solid {
+  translation 2.2 0 2
+  name "doorway lintel"
+  children [ Shape { appearance USE BLUE geometry Box { size 0.16 1.4 0.4 } } ]
+  boundingObject Box { size 0.16 1.4 0.4 }
+}
+Solid {
+  translation 3.1 0 0.015
+  name "green destination marker (visual only)"
+  children [ Shape { appearance PBRAppearance { baseColor 0.12 0.55 0.29 roughness 1 metalness 0 } geometry Box { size 0.8 1 0.02 } } ]
+}
+DEF DRONE Crazyflie {
+  translation -0.8 0 0.02
+  controller "flybrain_webots"
+  supervisor TRUE
+}
