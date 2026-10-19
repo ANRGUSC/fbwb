@@ -21,7 +21,7 @@ class Panel:
         self.run_id = run_id
         self.world = world
         self.root = tk.Tk()
-        self.root.title('Flybrain • live inputs, neural activity, outputs')
+        self.root.title('Flybrain - live inputs, neural activity, outputs | '+self.directory.name)
         self.root.configure(bg=BG)
         self.root.tk.call('tk','scaling',1.15)
         self.root.minsize(650,660)
@@ -92,7 +92,9 @@ class Panel:
         state, applied, motor = p['state'],p['applied'],p['decoded']
         brain = p.get('brain')
         anatomical = bool(brain and brain.get('decode',{}).get('decoder','').startswith('anatomical'))
-        self.card(65,192,'1   VISION  →  FOUR OPTICAL-FLOW FEATURES')
+        visual = p.get('visual')
+        is_flyvis = p.get('vision_mode') == 'flyvis'
+        self.card(65,192,'1   VISION - CPU FLYVIS / PANORAMIC BRIGHTNESS' if is_flyvis else '1   VISION - FOUR OPTICAL-FLOW FEATURES')
         try:
             self.image = tk.PhotoImage(data=p['camera_png'])
             c.create_image(24,96,image=self.image,anchor='nw')
@@ -100,23 +102,26 @@ class Panel:
             self.text(24,110,'Camera frame unavailable')
         x = 184
         self.text(24,242,p['phase'].get('camera','onboard camera'),10,MUTED)
-        for i,(name,value) in enumerate(zip(['Radial / outward','Left image motion','Right image motion','Vertical ratio'],p['inputs'])):
+        feature_names = ['Left eye luminance','Right eye luminance','Left handoff / 150 Hz','Right handoff / 150 Hz'] if is_flyvis else ['Radial / outward','Left image motion','Right image motion','Vertical ratio']
+        feature_values = (visual['mean_luminance'] + [r/150 for r in visual['mean_drive_hz']]) if visual else ([0]*4 if is_flyvis else p['inputs'])
+        for i,(name,value) in enumerate(zip(feature_names,feature_values)):
             y = 96+i*33
             self.text(x,y,name,12)
             self.text(w-68,y,f'{value:.3f}',12,CYAN)
             self.bar(x,y+18,w-x-40,value)
-        self.card(267,142,'2   RECEPTOR ACTIVITY — SAMPLED NEURONS, NOT ANATOMICAL OMMATIDIA')
+        self.card(267,142,'2   FLYVIS HANDOFF - SPATIALLY MAPPED VISUAL NEURONS' if is_flyvis else '2   RECEPTOR ACTIVITY - SAMPLED NEURONS')
         if brain:
-            receptors = brain['receptors']
+            input_cells = brain.get('visual_inputs',brain) if is_flyvis else brain
+            receptors = input_cells['receptors']
             offset = 0
-            group_width = (w-50)/3
+            group_width = (w-50)/max(1,len(input_cells['groups']))
             colors = [CYAN,ORANGE,GREEN]
-            for group_idx,group in enumerate(brain['groups']):
+            for group_idx,group in enumerate(input_cells['groups']):
                 gx = 22+group_idx*group_width
                 labels = ['R1-6 • anatomical left','R1-6 • anatomical right','R7/R8 • vertical'] if anatomical else ['R1-6 A • left proxy','R1-6 B • right proxy','R7/R8 • vertical']
-                self.text(gx,294,labels[group_idx],12,colors[group_idx])
+                self.text(gx,294,group['name'] if is_flyvis else labels[group_idx],12,colors[group_idx])
                 self.text(gx,313,f"Drive {group['target_hz']:.0f} Hz · measured {group['observed_hz']:.0f} Hz",11,MUTED)
-                n = brain['sample_group_sizes'][group_idx]
+                n = input_cells['sample_group_sizes'][group_idx]
                 cell = min(9,(group_width-8)/24)
                 for j,rec in enumerate(receptors[offset:offset+n]):
                     xx = gx+(j%24)*cell
@@ -171,10 +176,16 @@ class Panel:
         speeds = '   '.join(f'M{i+1}: {v:+.1f}' for i,v in enumerate(applied['motors']))
         self.text(22,733,'Motor speeds (rad/s)   '+speeds,12,MUTED)
         self.text(22,752,f"Measured heading {state['yaw']*180/3.141592653589793:+.1f} degrees (+ = left / CCW)",12,GREEN)
-        self.card(783,150,'5   WHAT IS HAPPENING NOW')
-        self.text(22,811,p['narrative'],12,TEXT,width=w-48)
-        self.text(20,940,'Measured signals explain the decoder; they do not prove a biological neuron-by-neuron causal story.',11,MUTED,width=w-38)
-        c.configure(scrollregion=(0,0,w,980))
+        if brain and 'selected_decoder' in brain.get('decode',{}):
+            d = brain['decode']
+            dn = f"{d['dna02_yaw_rad_s']:+.3f}" if d['dna02_available'] else 'unavailable'
+            self.card(783,70,'5   SAME-SPIKE DECODER COMPARISON - RAW YAW, + = LEFT')
+            self.text(22,810,f"Population {d['population_yaw_rad_s']:+.3f} | DNa02 {dn} rad/s | Applied: {d['selected_decoder']}",13,GREEN,width=w-45)
+            self.text(22,832,f"DNa02 L/R: {d['dna02_left_hz']:.1f}/{d['dna02_right_hz']:.1f} Hz (50 ms); fixture/filter still apply",11,MUTED,width=w-45)
+        self.card(860,220,'6   WHAT IS HAPPENING NOW')
+        self.text(22,889,p['narrative'],12,TEXT,width=w-48)
+        self.text(20,1087,'Measured signals explain the decoder; they do not prove a biological neuron-by-neuron causal story.',11,MUTED,width=w-38)
+        c.configure(scrollregion=(0,0,w,1130))
 
     def show_cell(self,text):
         if hasattr(self,'cell_label'):

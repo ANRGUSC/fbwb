@@ -9,6 +9,7 @@ def validate(directory):
     directory = Path(directory)
     records = [json.loads(line) for line in (directory/'live.ndjson').read_text().splitlines()]
     summary = json.loads((directory/'summary.json').read_text())
+    assert summary.get('vision','optic-flow') == 'optic-flow', 'Historical acceptance checks require --vision optic-flow; use validate_visual_run.py for FlyVis'
     assert all(p['run_id'] == summary['run_id'] for p in records)
     assert [p['seq'] for p in records] == list(range(1,len(records)+1))
     active = [p for p in records if p['state']['t'] >= 6]

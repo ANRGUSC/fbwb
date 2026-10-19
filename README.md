@@ -93,10 +93,52 @@ See [third-party sources](THIRD_PARTY.md) for attribution and upstream terms.
 
 ## Run the demo
 
+The default corrected-mode visual input is now **CPU FlyVis**. The original
+optic-flow/receptor input remains available as `--vision optic-flow`. The LIF
+brain equations, connectome weights, timing, forward decoder, and altitude PID
+are unchanged. Both turn decoders are measured on the same spikes in every
+corrected-mode run; `--decoder population` (default) or `--decoder dna02`
+selects which one actually drives yaw.
+
+Install the optional visual dependencies and prepare the pretrained model/maps:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-flyvis.txt
+.\.venv\Scripts\python.exe scripts/setup_flyvis.py --download-models
+```
+
+Use **Run FlyVis Population.cmd**, **Run FlyVis DNa02.cmd**, or
+**Run Legacy Optical Flow.cmd**. **Run Explained Demo.cmd** now runs FlyVis
+with the population decoder. The CPU front end adds startup and per-frame work;
+simulation time remains synchronized with the unchanged brain.
+
+```powershell
+# New vision; original turn readout (both readouts are logged)
+.\.venv\Scripts\python.exe scripts/run.py --mode corrected --vision flyvis --decoder population --scene explain --duration 18 --panel --output results/flyvis-population
+# New vision; DNa02 controls yaw
+.\.venv\Scripts\python.exe scripts/run.py --mode corrected --vision flyvis --decoder dna02 --scene explain --duration 18 --panel --output results/flyvis-dna02
+# Original input and output behavior
+.\.venv\Scripts\python.exe scripts/run.py --mode corrected --vision optic-flow --decoder population --scene explain --duration 18 --panel --output results/explained-bilateral
+# Compare raw proposals on the SAME neural trajectory
+.\.venv\Scripts\python.exe scripts/compare_decoders.py results/flyvis-population
+```
+
+`decoder_comparison.csv` contains both raw yaw proposals in rad/s (+ = left),
+DNa02 left/right rates, selected decoder, actual applied yaw, and CPU timing.
+The panel shows the same comparison and the externally driven visual neurons.
+These paired proposals isolate decoder differences. Comparing two independently
+controlled flights also changes subsequent images and neural activity.
+See [the FlyVis integration notes](docs/FLYVIS.md) for mapping assumptions and
+the explicit graded-activity-to-spiking interface.
+
+The following describes the original explained experiment. Its historical
+acceptance numbers and `validate_explained.py` apply to the **optic-flow** path;
+they are not acceptance criteria or promised outcomes for FlyVis/DNa02.
+
 Double-click **Run Explained Demo.cmd**, or run:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts/run.py --mode corrected --scene explain --duration 18 --panel --output results/explained-bilateral
+.\.venv\Scripts\python.exe scripts/run.py --mode corrected --vision optic-flow --scene explain --duration 18 --panel --output results/explained-bilateral
 ```
 
 | Simulated time | What happens |

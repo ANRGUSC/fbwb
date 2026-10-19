@@ -63,7 +63,7 @@ def build_brain(neurons, connectivity, mode='upstream', period_ms=20):
     return cls(connectivity, neurons, pr, dn, motion, len(neurons), torch.device('cpu'), substeps=int(period_ms))
 
 
-def load_brain(mode='upstream', period_ms=20, calibrating=False):
+def load_brain(mode='upstream', period_ms=20, calibrating=False, compare_decoders=False, decoder='population', dna02_gain=2.0):
     """Load all prepared neurons/edges without subsampling; preserve source row order."""
     directory = ROOT / 'data/prepared'
     if not (directory / 'connectivity.npz').exists():
@@ -92,7 +92,13 @@ def load_brain(mode='upstream', period_ms=20, calibrating=False):
                 if hashlib.sha256((ROOT/name).read_bytes()).hexdigest() != digest:
                     raise ValueError(f'Turn calibration is stale for {name}; rerun scripts/calibrate_turn.py.')
             reference = provenance['reference_hz']
-        return CorrectedFlyBrain(neurons, sp.load_npz(directory / 'counts.npz'), period_ms=period_ms,turn_reference_hz=reference)
+        cls = CorrectedFlyBrain
+        extra = {}
+        if compare_decoders:
+            from fbwb.visual_brain import VisualFlyBrain
+            cls = VisualFlyBrain
+            extra = dict(decoder=decoder, dna02_gain=dna02_gain)
+        return cls(neurons, sp.load_npz(directory / 'counts.npz'), period_ms=period_ms,turn_reference_hz=reference, **extra)
     matrix = sp.load_npz(directory / 'connectivity.npz').tocoo()
     indices = torch.from_numpy(np.stack([matrix.row, matrix.col]).astype(np.int64))
     connectivity = torch.sparse_coo_tensor(indices, torch.from_numpy(matrix.data), matrix.shape).coalesce()

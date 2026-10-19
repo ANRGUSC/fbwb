@@ -16,3 +16,4 @@ results/
 .env.*
 !.env.example
 *.pyc
+/worlds/.flyvis-*.wbt

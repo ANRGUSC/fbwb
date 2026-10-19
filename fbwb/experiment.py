@@ -31,15 +31,24 @@ def phase_at(t):
     return next(p for p in reversed(PHASES) if t >= p.start-1e-9)
 
 
-def explain_step(phase, state, inputs, motor, applied, decode=None):
+def explain_step(phase, state, inputs, motor, applied, decode=None, vision_mode='optic-flow'):
     """Mechanistic statements only; no invented neuron-level causal story."""
     pieces = [phase.explanation]
+    if vision_mode == 'flyvis' and state['t'] >= 6:
+        if phase.held:
+            pieces = [f'{phase.name}: pose held; panoramic brightness drives FlyVis visual neurons. Static contrast can evoke activity even with zero optical flow.']
+        elif phase.turn_trial:
+            screen = 'left' if phase.name == 'LEFT TURN' else 'right'
+            pieces = [f'Yaw-only trial with the {screen} screen moving. Panoramic camera yaw is stabilized; position is held. The measured neural turn may differ from the stimulus-side label.']
+        else:
+            pieces = ['Fixture released. Body-mounted panoramic images drive FlyVis, then the unchanged spiking brain.']
     if state['t'] < 6:
         pieces.append(f"Height target {applied['height']:.2f} m; measured height {state['z']:.2f} m. Vertical motion comes from the altitude controller.")
         return ' '.join(pieces)
     if decode:
         if 'motion_left_hz' in decode:
-            pieces.append(f"Motion L/R: {decode['motion_left_hz']:.1f}/{decode['motion_right_hz']:.1f} Hz/cell; gain-balanced {decode['motion_left_relative']:.2f}/{decode['motion_right_relative']:.2f}; yaw {motor['yaw']:+.1f} RC.")
+            population_yaw = decode.get('population_yaw_rc',motor['yaw'])
+            pieces.append(f"Motion L/R: {decode['motion_left_hz']:.1f}/{decode['motion_right_hz']:.1f} Hz/cell; gain-balanced {decode['motion_left_relative']:.2f}/{decode['motion_right_relative']:.2f}; population yaw {population_yaw:+.1f} RC.")
         else:
             pieces.append(f"Motion pools A/B: {decode['motion_a_sum_per_ms']:.2f}/{decode['motion_b_sum_per_ms']:.2f} spikes/ms; their difference gives yaw {motor['yaw']:+.1f} RC units.")
         pieces.append(f"Descending activity {decode['dn_sum_per_ms']:.2f} spikes/ms gives forward {motor['forward']:.1f} RC units.")

@@ -19,7 +19,18 @@ def main():
     parser.add_argument('--output', type=Path)
     parser.add_argument('--panel',action='store_true',help='Open the side-by-side live/replay visualization')
     parser.add_argument('--record',action='store_true',help='Record detailed live telemetry without opening the panel')
+    parser.add_argument('--vision', choices=['flyvis','optic-flow'], default='flyvis', help='CPU visual front end for corrected mode')
+    parser.add_argument('--decoder', choices=['population','dna02'], default='population', help='Applied turn readout; both are recorded')
+    parser.add_argument('--dna02-gain', type=float, default=2.0)
     args = parser.parse_args()
+    if args.mode != 'corrected' and args.decoder != 'population':
+        parser.error('DNa02 selection requires corrected mode')
+    if args.mode == 'corrected' and args.vision == 'flyvis':
+        if not (ROOT/'data/flyvis_bridge/handoff.npz').exists():
+            parser.error('Run pip install -r requirements-flyvis.txt, then scripts/setup_flyvis.py --download-models')
+        sys.path.insert(0,str(ROOT))
+        from fbwb.flyvis_input import verify_assets
+        verify_assets()
     if args.duration <= 0:
         parser.error('--duration must be positive')
     out = args.output or ROOT / 'results' / args.mode
@@ -28,6 +39,8 @@ def main():
     env = os.environ.copy()
     run_id = str(uuid.uuid4())
     env.update(FBWB_MODE=args.mode, FBWB_SCENE=args.scene, FBWB_DURATION=str(args.duration), FBWB_OUTPUT=str(out), FBWB_RUN_ID=run_id, PYTHONIOENCODING='utf-8')
+    env.update(FBWB_VISION=args.vision if args.mode == 'corrected' else 'optic-flow', FBWB_DECODER=args.decoder, FBWB_DNA02_GAIN=str(args.dna02_gain), CUDA_VISIBLE_DEVICES='')
+    (out/'run_config.json').write_text(json.dumps(vars(args),default=str,indent=2))
     env['FBWB_RECORD'] = '1' if args.panel or args.record or args.scene == 'explain' else '0'
     if args.scene == 'explain' and args.mode not in ('corrected','hover'):
         parser.error('Use --mode corrected for the demo, or hover for fixture validation.')
@@ -45,6 +58,9 @@ def main():
     if args.minimize:
         command.append('--minimize')
     world = ROOT/'worlds'/{'diagnostic':'flybrain.wbt','corridor':'corridor.wbt','explain':'explain.wbt'}[args.scene]
+    if args.mode == 'corrected' and args.vision == 'flyvis':
+        from fbwb.flyvis_input import prepare_flyvis_world
+        world = prepare_flyvis_world(world)
     command.append(str(world))
     status_path = out/'status.json'
     status_path.write_text(json.dumps({'run_id':run_id,'state':'starting'}))
@@ -62,6 +78,9 @@ def main():
         status_path.write_text(json.dumps({'run_id':run_id,'state':'failed'}))
         raise SystemExit('No summary for this run; inspect Webots controller output.')
     status_path.write_text(json.dumps({'run_id':run_id,'state':'finished'}))
+    if args.mode == 'corrected' and summary.get('simulation_seconds',0) >= 6:
+        from compare_decoders import summarize
+        summarize(out)
     print(json.dumps(summary, indent=2))
 
 
